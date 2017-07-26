@@ -1,0 +1,7 @@
+[package]
+name = "opening_othello"
+version = "0.1.0"
+authors = ["uhyo <uhyo@uhy.ooo>"]
+
+[dependencies]
+byteorder = "1.1.0"
