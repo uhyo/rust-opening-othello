@@ -2,7 +2,7 @@
 
 use std::collections::btree_map::{BTreeMap, Entry};
 
-static MAX_TURNS: u32 = 20;
+static MAX_TURNS: u32 = 24;
 
 pub struct GameTree {
     pub children: BTreeMap<u8, Box<GameTree>>,
@@ -25,9 +25,10 @@ impl GameTree {
     pub fn add_play(&mut self, buf: &[u8]) {
         let pl = read_buf(buf);
         let score = (pl.black as f64) - (pl.white as f64);
-        self.add_play2(pl.plays, score, 0);
+        let mut transform = Transform::new();
+        self.add_play2(pl.plays, score, 0, &mut transform);
     }
-    fn add_play2(&mut self, pl: &[u8], score: f64, turn: u32) {
+    fn add_play2(&mut self, pl: &[u8], score: f64, turn: u32, transform: &mut Transform) {
         // bufを読んであれする
         let mut tr = self;
         if turn >= MAX_TURNS {
@@ -49,7 +50,12 @@ impl GameTree {
                     // もう終わりじゃん
                     return ();
                 }
+                if turn == 0 {
+                    // 最初なのでtransform
+                    transform.init((p >> 4), (p & 0x0f));
+                }
                 // 次へ
+                let p = transform.get(p);
                 let en = tr.children.entry(p);
                 match en {
                     Entry::Vacant(e) => {
@@ -57,12 +63,12 @@ impl GameTree {
                         let ntr = GameTree::new();
                         let mut trp = e.insert(Box::new(ntr));
                         tr.play_keys.push(p);
-                        trp.add_play2(buf2, score, turn+1);
+                        trp.add_play2(buf2, score, turn+1, transform);
                     },
                     Entry::Occupied(o) => {
                         // すでに登録
                         let mut trp = o.into_mut();
-                        trp.add_play2(buf2, score, turn+1);
+                        trp.add_play2(buf2, score, turn+1, transform);
                     },
                 }
             },
@@ -84,5 +90,57 @@ fn read_buf<'a>(buf: &'a [u8]) -> Play<'a> {
         plays,
         black,
         white,
+    }
+}
+
+// 座標変換
+struct Transform {
+    table: Vec<u8>,
+}
+impl Transform {
+    fn new() -> Self {
+        let table = vec![0u8; 256];
+        Transform {
+            table,
+        }
+    }
+    fn init(&mut self, x: u8, y: u8) {
+        // C4をどこに移すかで4パターンある
+        let mut table = &mut self.table;
+        if x == 2 && y == 3 {
+            // identity
+            for x in 0..8 {
+                for y in 0..8 {
+                    table[(x << 4) | y] = ((x as u8) << 4) | (y as u8);
+                }
+            }
+        } else if x == 3 && y == 2 {
+            // x/y swap
+            for x in 0..8 {
+                for y in 0..8 {
+                    table[(x << 4) | y] = ((y as u8) << 4) | (x as u8);
+                }
+            }
+        } else if x == 5 && y == 4 {
+            // ~x/~y
+            for x in 0..8 {
+                for y in 0..8 {
+                    table[(x << 4) | y] = (((7-x) as u8) << 4) | ((7-y) as u8);
+                }
+            }
+        } else {
+            //~x/~y swap
+            for x in 0..8 {
+                for y in 0..8 {
+                    table[(x << 4) | y] = (((7-y) as u8) << 4) | ((7-x) as u8);
+                }
+            }
+        }
+        // special
+        table[0x88] = 0x88;
+        table[0xff] = 0xff;
+    }
+    fn get(&self, v: u8) -> u8 {
+        self.table[v as usize]
     }
 }
