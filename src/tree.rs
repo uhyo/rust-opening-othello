@@ -2,8 +2,6 @@
 
 use std::collections::btree_map::{BTreeMap, Entry};
 
-static MAX_TURNS: u32 = 25;
-
 pub struct GameTree {
     pub children: BTreeMap<u8, Box<GameTree>>,
     pub play_keys: Vec<u8>,
@@ -22,16 +20,16 @@ impl GameTree {
         }
     }
 
-    pub fn add_play(&mut self, buf: &[u8]) {
+    pub fn add_play(&mut self, buf: &[u8], max_turns: u32) {
         let pl = read_buf(buf);
         let score = (pl.black as f64) - (pl.white as f64);
         let mut transform = Transform::new();
-        self.add_play2(pl.plays, score, 0, &mut transform);
+        self.add_play2(pl.plays, score, 0, &mut transform, max_turns);
     }
-    fn add_play2(&mut self, pl: &[u8], score: f64, turn: u32, transform: &mut Transform) {
+    fn add_play2(&mut self, pl: &[u8], score: f64, turn: u32, transform: &mut Transform, max_turns: u32) {
         // bufを読んであれする
         let mut tr = self;
-        if turn >= MAX_TURNS {
+        if turn >= max_turns {
             // 規定のターンまで探索した
             return ();
         }
@@ -63,12 +61,12 @@ impl GameTree {
                         let ntr = GameTree::new();
                         let mut trp = e.insert(Box::new(ntr));
                         tr.play_keys.push(p);
-                        trp.add_play2(buf2, score, turn+1, transform);
+                        trp.add_play2(buf2, score, turn+1, transform, max_turns);
                     },
                     Entry::Occupied(o) => {
                         // すでに登録
                         let mut trp = o.into_mut();
-                        trp.add_play2(buf2, score, turn+1, transform);
+                        trp.add_play2(buf2, score, turn+1, transform, max_turns);
                     },
                 }
             },

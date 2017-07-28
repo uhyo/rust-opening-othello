@@ -18,12 +18,12 @@ use othello::strategy::search::Evaluator;
 //   stable (f64)// 確定石の評価値の係数
 //   count (f64) // 置ける場所の評価値の係数
 
-pub fn serialize<W>(tree: GameTree, mut dest: W)
+pub fn serialize<W>(tree: GameTree, mut dest: W, max_turns: u32)
     where W: Write {
     // 60手分の評価を用意
     let mut inputs: Vec<Vec<f64>> = Vec::with_capacity(60);
     let mut targets: Vec<Vec<f64>> = Vec::with_capacity(60);
-    for _ in 0..60 {
+    for _ in 0..max_turns {
         inputs.push(Vec::new());
         targets.push(Vec::new());
     }
@@ -35,12 +35,20 @@ pub fn serialize<W>(tree: GameTree, mut dest: W)
     let mut dq = VecDeque::new();
     dq.push_back((0, board, Box::new(tree)));
 
+    let mut cur_i = 0;
     loop {
         match dq.pop_front() {
             None => {
                 break;
             },
             Some((i, board, mut tree)) => {
+                if cur_i < i {
+                    if (i as u32) >= max_turns {
+                        break;
+                    }
+                    println!("Learing index {}", i);
+                    cur_i = i;
+                }
                 // i手目のtreeだ
                 evaluator.reset();
                 let place = evaluator.eval_place(&board);
@@ -75,7 +83,7 @@ pub fn serialize<W>(tree: GameTree, mut dest: W)
         }
     }
     // 各indexに対して学習を行う
-    for i in 0..60 {
+    for i in 0..max_turns {
         println!("Learning index {} ...", i);
         let input_v = inputs.remove(0);
         let len = input_v.len();
@@ -88,12 +96,13 @@ pub fn serialize<W>(tree: GameTree, mut dest: W)
         lin_mod.train_with_optimization(&input_mat, &target_vec);
 
         let params = lin_mod.parameters().unwrap();
+        println!("params = {:?}", params);
         let place = params[0];
         let stable = params[1];
         let count = params[2];
         println!("place  = {}", place);
-        println!("stable = {}", place);
-        println!("count  = {}", place);
+        println!("stable = {}", stable);
+        println!("count  = {}", count);
 
         dest.write_f64::<BigEndian>(place).unwrap();
         dest.write_f64::<BigEndian>(stable).unwrap();

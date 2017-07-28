@@ -20,7 +20,9 @@ fn main() {
     let mut opts = Options::new();
     opts.optopt("f", "file", "input file name", "FILE");
     opts.optopt("o", "out", "output file name", "FILE");
+    opts.optflag("r", "replace", "replace existing output file");
     opts.optflag("", "opening", "Generate an opening book.");
+    opts.optopt("t", "turn", "[opening] turn number to consider", "NUMBER");
     opts.optflag("", "evaluate", "Generate an evaluation parameter.");
 
     let opts = opts.parse(&args[1..]).unwrap();
@@ -30,6 +32,15 @@ fn main() {
     let meta = fs::metadata(input_name.as_str()).unwrap();
     let filesize = meta.len();
     let mut file = File::open(input_name.as_str()).unwrap();
+
+    // turn number
+    let default_turn =
+        if opts.opt_present("evaluate") {
+            64
+        } else {
+            25
+        };
+    let turns = opts.opt_str("turn").map_or(Ok(default_turn), |s| s.parse()).unwrap();
 
     println!("Loaded {}", input_name);
     // GameTreeをとりあえず作る
@@ -41,7 +52,7 @@ fn main() {
     while pos < filesize {
         file.read_exact(&mut buf).unwrap();
         // treeに加える
-        tree.add_play(&buf);
+        tree.add_play(&buf, turns);
 
         pos += 64;
         cnt += 1;
@@ -52,14 +63,15 @@ fn main() {
     println!("{} plays", tree.plays);
     println!("total score: {}", tree.score);
 
+    let replace = opts.opt_present("replace");
     if opts.opt_present("opening") {
         // serializeする
         let outfilename = opts.opt_str("out").unwrap_or(String::from(OUT_OPENING_NAME));
-        let outfile = OpenOptions::new().write(true).create_new(true).open(outfilename.as_str()).unwrap();
+        let outfile = OpenOptions::new().write(true).create_new(!replace).open(outfilename.as_str()).unwrap();
         opening::serialize(tree, outfile);
     } else if opts.opt_present("evaluate") {
         let outfilename = opts.opt_str("out").unwrap_or(String::from(OUT_EVAL_NAME));
-        let outfile = OpenOptions::new().write(true).create_new(true).open(outfilename.as_str()).unwrap();
-        evaluate::serialize(tree, outfile);
+        let outfile = OpenOptions::new().write(true).create_new(!replace).open(outfilename.as_str()).unwrap();
+        evaluate::serialize(tree, outfile, turns);
     }
 }
