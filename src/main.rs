@@ -67,11 +67,11 @@ fn main() {
     if opts.opt_present("opening") {
         // serializeする
         let outfilename = opts.opt_str("out").unwrap_or(String::from(OUT_OPENING_NAME));
-        let outfile = OpenOptions::new().write(true).create_new(!replace).open(outfilename.as_str()).unwrap();
+        let outfile = OpenOptions::new().write(true).create(true).create_new(!replace).open(outfilename.as_str()).unwrap();
         opening::serialize(tree, outfile);
     } else if opts.opt_present("evaluate") {
         let outfilename = opts.opt_str("out").unwrap_or(String::from(OUT_EVAL_NAME));
-        let outfile = OpenOptions::new().write(true).create_new(!replace).open(outfilename.as_str()).unwrap();
+        let outfile = OpenOptions::new().write(true).create(true).create_new(!replace).open(outfilename.as_str()).unwrap();
         evaluate::serialize(tree, outfile, turns);
     }
 }
