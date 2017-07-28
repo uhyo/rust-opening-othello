@@ -10,7 +10,7 @@ use tree::GameTree;
 //   BLOCK*
 //
 // BLOCK:
-//   block_size: u64
+//   block_size: u64 (PLAYの数)
 //   PLAY+ // playでsortされている
 //
 // PLAY: (24 octets)
@@ -48,7 +48,6 @@ pub fn serialize<W>(tree: GameTree, mut dest: W)
     let mut bid = 1;
     let mut current_addr = 0;
     let mut addr_map = Vec::new();
-    addr_map.push(0);
 
     // まずBlockを作る
     loop {
@@ -84,10 +83,10 @@ pub fn serialize<W>(tree: GameTree, mut dest: W)
                     cnt += 1;
                 }
                 // playの数が分かったのでsizeを決める
-                block.size = 8 + PLAY_SIZE * cnt;
+                block.size = cnt;
                 block.addr = current_addr;
 
-                current_addr += block.size;
+                current_addr += 8 + PLAY_SIZE * cnt;
                 addr_map.push(block.addr);
                 
                 // 処理済キューへ
@@ -112,6 +111,7 @@ pub fn serialize<W>(tree: GameTree, mut dest: W)
 }
 
 fn keys_of(tree: Box<GameTree>) -> (Vec<u8>, Box<GameTree>) {
-    let keys = tree.play_keys.clone();
+    let mut keys = tree.play_keys.clone();
+    keys.sort();
     return (keys, tree);
 }

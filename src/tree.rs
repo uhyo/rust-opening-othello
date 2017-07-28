@@ -2,7 +2,7 @@
 
 use std::collections::btree_map::{BTreeMap, Entry};
 
-static MAX_TURNS: u32 = 24;
+static MAX_TURNS: u32 = 25;
 
 pub struct GameTree {
     pub children: BTreeMap<u8, Box<GameTree>>,
