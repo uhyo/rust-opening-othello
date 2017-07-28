@@ -4,4 +4,7 @@ version = "0.1.0"
 authors = ["uhyo <uhyo@uhy.ooo>"]
 
 [dependencies]
+getopts = "0.2.14"
 byteorder = "1.1.0"
+rusty-machine = "0.5.4"
+othello = { path = "../othello" }

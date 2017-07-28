@@ -1,21 +1,38 @@
 extern crate opening_othello;
+extern crate getopts;
 use std::fs;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::Read;
+use std::env;
+
+use getopts::Options;
 
 use opening_othello::tree;
 use tree::GameTree;
-use opening_othello::serialize::serialize;
+use opening_othello::{opening, evaluate};
 
-static INPUT_NAME: &str = "./data/record.db";
-static OUTPUT_NAME: &str = "./data/out.db";
+static RECORD_NAME: &str = "./data/record.db";
+static OUT_OPENING_NAME: &str = "./data/opening.db";
+static OUT_EVAL_NAME: &str = "./data/eval.db";
 
 fn main() {
-    let meta = fs::metadata(INPUT_NAME).unwrap();
-    let filesize = meta.len();
-    let mut file = File::open(INPUT_NAME).unwrap();
+    let args: Vec<_> = env::args().collect();
+    let mut opts = Options::new();
+    opts.optopt("f", "file", "input file name", "FILE");
+    opts.optopt("o", "out", "output file name", "FILE");
+    opts.optflag("", "opening", "Generate an opening book.");
+    opts.optflag("", "evaluate", "Generate an evaluation parameter.");
 
-    println!("hi");
+    let opts = opts.parse(&args[1..]).unwrap();
+
+    let input_name = opts.opt_str("file").unwrap_or(String::from(RECORD_NAME));
+
+    let meta = fs::metadata(input_name.as_str()).unwrap();
+    let filesize = meta.len();
+    let mut file = File::open(input_name.as_str()).unwrap();
+
+    println!("Loaded {}", input_name);
+    // GameTreeをとりあえず作る
     let mut tree = GameTree::new();
     let mut pos = 0;
     // ひとつずつ読んでいく
@@ -34,7 +51,15 @@ fn main() {
     }
     println!("{} plays", tree.plays);
     println!("total score: {}", tree.score);
-    // serializeする
-    let outfile = File::create(OUTPUT_NAME).unwrap();
-    serialize(tree, outfile);
+
+    if opts.opt_present("opening") {
+        // serializeする
+        let outfilename = opts.opt_str("out").unwrap_or(String::from(OUT_OPENING_NAME));
+        let outfile = OpenOptions::new().write(true).create_new(true).open(outfilename.as_str()).unwrap();
+        opening::serialize(tree, outfile);
+    } else if opts.opt_present("evaluate") {
+        let outfilename = opts.opt_str("out").unwrap_or(String::from(OUT_EVAL_NAME));
+        let outfile = OpenOptions::new().write(true).create_new(true).open(outfilename.as_str()).unwrap();
+        evaluate::serialize(tree, outfile);
+    }
 }
